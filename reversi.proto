@@ -1,0 +1,69 @@
+syntax = "proto3";
+
+package reversi;
+
+// Serviço para o jogo Reversi
+service ReversiGameService {
+  // Envia uma mensagem para o chat
+  rpc SendMessage (MessageRequest) returns (MessageResponse);
+
+  // Envia o movimento do jogador no tabuleiro
+  rpc SendBoardMove (BoardMoveRequest) returns (BoardMoveResponse);
+
+  // O jogador desiste do jogo
+  rpc GiveUp (GiveUpRequest) returns (GiveUpResponse);
+
+  // Indica que o turno de um jogador terminou
+  rpc TurnEnd (TurnEndRequest) returns (TurnEndResponse);
+
+  // Define o primeiro jogador
+  rpc FirstPlayer (FirstPlayerRequest) returns (FirstPlayerResponse);
+}
+
+// Mensagem de envio de uma mensagem no chat
+message MessageRequest {
+  string message = 1;  // A mensagem a ser enviada
+}
+
+message MessageResponse {
+  string status = 1;  // Status da operação (ex: sucesso ou erro)
+}
+
+// Mensagem para o movimento do jogador no tabuleiro
+message BoardMoveRequest {
+  int32 boardH = 1;  // Coordenada horizontal da jogada
+  int32 boardV = 2;  // Coordenada vertical da jogada
+}
+
+message BoardMoveResponse {
+  string status = 1;  // Status da operação (ex: sucesso ou erro)
+  string currentPlayer = 2;  // Jogador que fez a jogada
+}
+
+// Mensagem para o jogador desistir
+message GiveUpRequest {
+  string playerColor = 1;  // Cor do jogador que desiste
+}
+
+message GiveUpResponse {
+  string status = 1;  // Status da operação (ex: sucesso ou erro)
+  string winner = 2;  // Jogador vencedor após a desistência (se aplicável)
+}
+
+// Mensagem para indicar que o turno do jogador terminou
+message TurnEndRequest {
+  int32 playerTurn = 1;  // Jogador que terminou seu turno
+}
+
+message TurnEndResponse {
+  string status = 1;  // Status da operação
+}
+
+// Mensagem para definir o primeiro jogador
+message FirstPlayerRequest {
+  int32 playerTurn = 1;  // Jogador que será o primeiro a jogar
+}
+
+message FirstPlayerResponse {
+  string status = 1;  // Status da operação
+}
