@@ -18,15 +18,29 @@ service ReversiGameService {
 
   // Define o primeiro jogador
   rpc FirstPlayer (FirstPlayerRequest) returns (FirstPlayerResponse);
+
+  rpc InitializeClients (InitializeRequest) returns (InitializeResponse);
+}
+
+// Mensagem de inicialização
+message InitializeRequest {
+  string player_name = 1;  // Nome do jogador que está se conectando
+}
+
+message InitializeResponse {
+  string message = 1;  // Mensagem de resposta
+  string player_id = 2;  // ID único gerado para o jogador
 }
 
 // Mensagem de envio de uma mensagem no chat
 message MessageRequest {
-  string message = 1;  // A mensagem a ser enviada
+  string sender = 1; // Nome do remetente
+  string content = 2; // Conteúdo da mensagem
 }
 
 message MessageResponse {
-  string status = 1;  // Status da operação (ex: sucesso ou erro)
+  string status = 1;  // Status da operação (sucesso ou erro)
+  string reply = 2;   // Resposta do servidor
 }
 
 // Mensagem para o movimento do jogador no tabuleiro
