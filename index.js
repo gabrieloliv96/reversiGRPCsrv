@@ -3,7 +3,6 @@ const protoLoader = require('@grpc/proto-loader');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');  // Importando o uuid para gerar IDs únicos
 
-
 // Carregar o arquivo .proto
 const packageDef = protoLoader.loadSync(path.join(__dirname, 'reversi.proto'), {
   keepCase: true,
@@ -12,33 +11,55 @@ const packageDef = protoLoader.loadSync(path.join(__dirname, 'reversi.proto'), {
   defaults: true,
   oneofs: true
 });
-var reversi_proto = grpc.loadPackageDefinition(packageDef).reversi;
-//var routeguide = protoDescriptor.routeguide;
+const reversi_proto = grpc.loadPackageDefinition(packageDef).reversi;
+
+
 const reversiProto = reversi_proto.reversi;
 
 // Variáveis para o jogo de Reversi
 let board = Array(8).fill().map(() => Array(8).fill(' '));  // Tabuleiro 8x8 vazio
 let currentPlayer = 'Player 1';  // Jogador inicial
 let gameState = 'in_progress';  // Estado do jogo (em andamento)
-let players = {};
+let clients = [];  // Lista de clientes conectados
+
+function chat(call) {
+  // Adicionar o cliente à lista de clientes conectados
+  clients.push(call);
+
+  // Quando o cliente enviar uma mensagem, retransmitir para todos os outros clientes
+  call.on('data', (message) => {
+    console.log(`Mensagem recebida de ${message.sender}: ${message.content}`);
+
+    // Enviar a mensagem para todos os clientes conectados, exceto o remetente
+    clients.forEach((client) => {
+      if (client !== call) {
+        // Enviar a mensagem para outros clientes
+        client.write({ sender: message.sender, content: message.content });
+      }
+    });
+  });
+
+  // Quando o cliente terminar a comunicação
+  call.on('end', () => {
+    console.log('Cliente encerrou a comunicação.');
+    // Remover o cliente da lista
+    clients = clients.filter((client) => client !== call);
+    call.end();
+  });
+}
 
 function initializeClients(call, callback) {
   try {
-    // Gerar um ID único para o jogador
-    const playerId = uuidv4();
-    console.log(`inicializando o player ${playerId}`);  // Exibe o ID gerado
+    const playerId = uuidv4();  // Gerar um ID único para o jogador
+    console.log(`Player initialized with ID: ${playerId}`);
 
-    // Armazenar o jogador no "banco de dados" (neste caso, um objeto simples)
-    players[playerId] = {
-      id: playerId,
-      gameState: 'initialized',
-    };
+    // Armazenar o ID do jogador em metadados
+    const metadata = new grpc.Metadata();
+    metadata.add('player_id', playerId);
 
-    // Chama o callback com a resposta de sucesso
-    callback(null, { message: `Jogo iniciado para ${playerId}`, player_id: playerId });
-
+    // Responder ao cliente com o ID gerado
+    callback(null, { message: `Jogo iniciado para ${playerId}`, player_id: playerId }, metadata);
   } catch (error) {
-    // Caso ocorra algum erro, captura e retorna a mensagem de erro
     console.error('Erro ao inicializar o jogador:', error);
     callback({
       code: grpc.status.INTERNAL,
@@ -54,46 +75,6 @@ function startGame(call, callback) {
   currentPlayer = playerName;  // Definir o jogador inicial
   gameState = 'in_progress';  // Jogo iniciado
   callback(null, { message: `Jogo iniciado para ${playerName}`, player_name: playerName });
-}
-
-
-function chat(call) {
-  // Adiciona a stream do cliente
-  call.on('data', (message) => {
-    const { sender, receiver, content } = message;
-    console.log(`Mensagem de ${sender} para ${receiver}: ${content}`);
-
-    // Envia a mensagem para o cliente destinatário
-    if (clients[receiver]) {
-      clients[receiver].write({ sender, receiver, content });
-    } else {
-      console.log(`Destinatário ${receiver} não encontrado`);
-    }
-  });
-
-  // Quando o cliente se desconectar, remove a stream do dicionário
-  call.on('end', () => {
-    Object.keys(clients).forEach((client) => {
-      if (clients[client] === call) {
-        delete clients[client];
-        console.log(`${client} desconectado.`);
-      }
-    });
-  });
-
-  // Adiciona a stream do cliente no dicionário
-  call.on('ready', () => {
-    console.log('Novo cliente conectado');
-  });
-
-  call.on('error', (e) => {
-    console.error(`Erro na conexão: ${e.message}`);
-  });
-
-  // Quando o cliente se conecta, armazena sua stream
-  call.on('data', (message) => {
-    clients[message.sender] = call;
-  });
 }
 
 // Função para fazer um movimento
@@ -116,11 +97,18 @@ function makeMove(call, callback) {
 }
 
 function sendMessage(call, callback) {
-  const message = call.request.message;
-  console.log(`Mensagem recebida: ${message}`);
+  const { sender, content } = call.request;
+  console.log(`Mensagem recebida de ${sender}: ${content}`);
 
-  // Retornar uma resposta
-  callback(null, { status: 'Mensagem recebida', message });
+  // Enviar mensagem para todos os clientes, exceto o remetente
+  clients.forEach(client => {
+    if (client !== call) {
+      client.write({ sender, content });
+    }
+  });
+
+  // Responder ao cliente com um status
+  callback(null, { status: 'Mensagem recebida', reply: content });
 }
 
 // Função para obter o estado atual do tabuleiro
@@ -146,7 +134,6 @@ function main() {
     sendMessage: sendMessage,
     chat: chat,
     initializeClients: initializeClients
-    // firstPlayer: firstPlayer,
   });
 
   // Iniciar o servidor gRPC na porta 50051

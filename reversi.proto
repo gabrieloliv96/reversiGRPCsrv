@@ -5,7 +5,7 @@ package reversi;
 // Serviço para o jogo Reversi
 service ReversiGameService {
   // Envia uma mensagem para o chat
-  rpc SendMessage (MessageRequest) returns (MessageResponse);
+  // rpc SendMessage (MessageRequest) returns (MessageResponse);
 
   // Envia o movimento do jogador no tabuleiro
   rpc SendBoardMove (BoardMoveRequest) returns (BoardMoveResponse);
@@ -20,8 +20,15 @@ service ReversiGameService {
   rpc FirstPlayer (FirstPlayerRequest) returns (FirstPlayerResponse);
 
   rpc InitializeClients (InitializeRequest) returns (InitializeResponse);
+  
+  rpc Chat (stream ChatMessage) returns (stream ChatMessage);
 }
 
+// Mensagem do Chat
+message ChatMessage {
+  string sender = 1;  // Nome do remetente
+  string content = 2; // Conteúdo da mensagem
+}
 // Mensagem de inicialização
 message InitializeRequest {
   string player_name = 1;  // Nome do jogador que está se conectando
