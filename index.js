@@ -21,6 +21,7 @@ let board = Array(8).fill().map(() => Array(8).fill(' '));  // Tabuleiro 8x8 vaz
 let currentPlayer = 'Player 1';  // Jogador inicial
 let gameState = 'in_progress';  // Estado do jogo (em andamento)
 let clients = [];  // Lista de clientes conectados
+let players = [];
 
 function chat(call) {
   // Adicionar o cliente à lista de clientes conectados
@@ -44,6 +45,26 @@ function chat(call) {
     console.log('Cliente encerrou a comunicação.');
     // Remover o cliente da lista
     clients = clients.filter((client) => client !== call);
+    call.end();
+  });
+}
+
+function game(call) {
+  players.push(call);
+
+  call.on('data', (message) => {
+    console.log(`Mensagem recebida de ${message.sender}: ${message.content}`);
+    players.forEach((player) => {
+      if (player !== call) {
+        player.write({ event: message.event, content: message.content });
+      }
+    })
+  });
+
+  call.on('end', () => {
+    console.log('Cliente encerrou a comunicação.');
+    // Remover o cliente da lista
+    players = players.filter((player) => player !== call);
     call.end();
   });
 }
@@ -133,6 +154,7 @@ function main() {
     getGameState: getGameState,
     sendMessage: sendMessage,
     chat: chat,
+    game: game,
     initializeClients: initializeClients
   });
 

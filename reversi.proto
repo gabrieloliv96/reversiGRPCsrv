@@ -22,12 +22,19 @@ service ReversiGameService {
   rpc InitializeClients (InitializeRequest) returns (InitializeResponse);
   
   rpc Chat (stream ChatMessage) returns (stream ChatMessage);
+
+  rpc Game (stream GameMessage) returns (stream GameMessage);
 }
 
 // Mensagem do Chat
 message ChatMessage {
   string sender = 1;  // Nome do remetente
   string content = 2; // Conteúdo da mensagem
+}
+
+message GameMessage {
+  string event = 1;
+  string content = 2;
 }
 // Mensagem de inicialização
 message InitializeRequest {
